@@ -1,31 +1,34 @@
-# TRMNL Plugin Boilerplate
+# FBI Most Wanted TRMNL Plugin
 
-A boilerplate template for creating TRMNL e-ink display plugins.
+A TRMNL e-ink display plugin that shows information about FBI Most Wanted fugitives, randomly selecting and displaying one person from the current Most Wanted list.
 
 ## Features
 
-- Flask-based webhook endpoint with CORS support
-- E-ink display optimization
-- Built-in caching system
-- Comprehensive error handling
-- Structured logging
-- Environment-based configuration management
-- Display generator service with error display support
-- API service template with caching
-- Extensive utility functions for formatting and validation
+- Displays FBI Most Wanted information on TRMNL e-ink display
+- Randomly selects one person from the current Most Wanted list
+- Shows detailed information including:
+  - Photo (when available)
+  - Name and status
+  - Reward information
+  - Description and details
+- Advanced image processing for e-ink optimization
+- Built-in caching system to minimize API calls
+- Comprehensive error handling and display
+- Cloudflare-aware image fetching system
 
 ## Prerequisites
 
 - Python 3.12+
 - TRMNL device and API key
+- Chrome/Chromium (for Selenium-based image fetching)
 - Docker (optional)
 
 ## Installation
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/your-plugin.git
-cd your-plugin
+git clone https://github.com/yourusername/fbi-most-wanted-plugin.git
+cd fbi-most-wanted-plugin
 ```
 
 2. Create and activate a virtual environment:
@@ -48,6 +51,7 @@ cp .env.template .env
 ```
 TRMNL_API_KEY=your_api_key_here
 TRMNL_PLUGIN_UUID=your_plugin_uuid_here
+CACHE_TIMEOUT=600  # Cache timeout in seconds
 ```
 
 ## Development
@@ -58,7 +62,7 @@ TRMNL_PLUGIN_UUID=your_plugin_uuid_here
 python -m src.app
 ```
 
-The development server will automatically open your default browser to the webhook endpoint. You can access:
+The development server will automatically open your default browser to:
 - Home page: http://localhost:8080/
 - Webhook endpoint: http://localhost:8080/webhook
 
@@ -73,7 +77,7 @@ The development server will automatically open your default browser to the webho
 │   ├── app.py          # Main application entry point
 │   ├── config.py       # Configuration management
 │   ├── services/       # Core services
-│   │   ├── api_service.py    # API interaction service
+│   │   ├── api_service.py    # FBI API interaction service
 │   │   └── display.py        # Display generation service
 │   └── utils/          # Utility functions
 │       ├── __init__.py      # Package exports
@@ -86,31 +90,48 @@ The development server will automatically open your default browser to the webho
 ### Core Components
 
 1. **API Service** (`src/services/api_service.py`)
-   - Handles all API interactions
+   - Handles FBI Most Wanted API interactions
    - Implements caching mechanism
-   - Tracks last update timestamp
+   - Random selection of wanted persons
+   - Image URL processing and validation
 
 2. **Display Generator** (`src/services/display.py`)
    - Creates optimized images for e-ink display
    - Handles error displays
-   - Supports status bar and content layout
+   - Advanced image processing features:
+     - Cloudflare bypass for image fetching
+     - Dithering optimization for e-ink
+     - Dynamic text wrapping and layout
+     - Placeholder generation for missing images
 
-3. **Utility Functions**
-   - `formatters.py`: Date/time formatting, API response formatting
-   - `validators.py`: Data validation, string sanitization
-   - Common utilities exported through `__init__.py`
-
-4. **Configuration** (`src/config.py`)
+3. **Configuration** (`src/config.py`)
    - Environment-based configuration
-   - Validation for required settings
-   - Default values for optional settings
+   - Display dimensions
+   - Cache timeout settings
+   - API credentials
 
-### Creating Your Plugin
+### FBI API Integration
 
-1. Modify `src/services/api_service.py` to implement your data fetching logic
-2. Update `src/services/display.py` to customize the display layout
-3. Add any additional utilities in `src/utils/`
-4. Update configuration in `src/config.py` as needed
+The plugin integrates with the FBI Most Wanted API (https://api.fbi.gov/wanted/v1/list) to fetch:
+- Total number of wanted persons
+- Individual profiles including:
+  - Name and status
+  - Description and details
+  - Reward information
+  - Photo URLs
+
+### Display Features
+
+The plugin creates an optimized display showing:
+1. Header with FBI Most Wanted title and total count
+2. Main content area with:
+   - Person's name/title
+   - Status
+   - Photo (if available)
+   - Reward information
+   - Description
+   - Additional details
+3. Status bar with last update timestamp
 
 ## Testing
 
@@ -138,7 +159,7 @@ The render.yaml file includes:
 - Python 3.12.0 runtime
 - Gunicorn web server
 - Environment variable configuration
-- Build and start commands
+- Chrome/Chromium dependencies
 
 ## Contributing
 
