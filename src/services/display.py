@@ -83,11 +83,13 @@ class DisplayGenerator:
     def _draw_wanted_person(self, draw: ImageDraw, person: Dict[str, Any], image: Image) -> None:
         '''Draw wanted person information with photo.'''
         # Set up dimensions for image placement
+        right_margin = 20
         image_width = 250  # Width for person's photo
         image_height = 300  # Max height for photo
-        image_x = self.width - image_width - 20  # Position from right edge
+        image_x = self.width - image_width - right_margin  # Position from right edge
+        image_y = 90  # Top margin for image
         text_width = image_x - 40  # Available width for text
-        
+
         # Draw name/title
         title_lines = self._wrap_text(person['title'], self.heading_font, text_width)
         current_y = 90
@@ -108,6 +110,8 @@ class DisplayGenerator:
             if wanted_image:
                 # Process the image
                 wanted_image = wanted_image.convert('L')  # Convert to grayscale
+                
+                # Calculate aspect ratio and resize
                 aspect_ratio = wanted_image.height / wanted_image.width
                 target_height = min(image_height, int(image_width * aspect_ratio))
                 wanted_image = wanted_image.resize((image_width, target_height))
@@ -115,8 +119,8 @@ class DisplayGenerator:
                 # Convert to 1-bit black and white with dithering
                 wanted_image = wanted_image.convert('1', dither=Image.FLOYDSTEINBERG)
                 
-                # Paste image onto display
-                image.paste(wanted_image, (image_x, 90))
+                # Paste image onto display at the correct position
+                image.paste(wanted_image, (image_x, image_y))
                 logger.info("Successfully processed and pasted image")
             else:
                 # Create placeholder if image fetch failed
@@ -133,31 +137,26 @@ class DisplayGenerator:
             )
             current_y += 25
 
-        # Draw reward text if available
-        if person['reward_text']:
-            current_y += 10
-            reward_lines = self._wrap_text(person['reward_text'], self.body_font, text_width)
-            for line in reward_lines[:2]:  # Limit to 2 lines
-                draw.text((20, current_y), line, font=self.body_font, fill=0)
-                current_y += 25
-
-        # Draw description
+        # Draw description with proper wrapping
         if person['description']:
             current_y += 10
             desc_lines = self._wrap_text(person['description'], self.small_font, text_width)
-            for line in desc_lines[:8]:  # Limit to 8 lines
-                draw.text((20, current_y), line, font=self.small_font, fill=0)
+            for line in desc_lines[:4]:  # Limit to 4 lines for better layout
+                draw.text(
+                    (20, current_y),
+                    line,
+                    font=self.small_font,
+                    fill=0
+                )
                 current_y += 20
 
         # Draw details if available and there's space
-        if person['details'] and current_y < (self.height - 100):
+        if person['details']:
             current_y += 10
-            # Strip HTML tags from details
             import re
             details_text = re.sub('<[^<]+?>', '', person['details'])
             details_lines = self._wrap_text(details_text, self.small_font, text_width)
-            remaining_space = (self.height - 100) - current_y
-            max_lines = remaining_space // 20
+            max_lines = min(8, (self.height - current_y - 60) // 20)  # Ensure we don't overflow
             for line in details_lines[:max_lines]:
                 draw.text(
                     (20, current_y),
