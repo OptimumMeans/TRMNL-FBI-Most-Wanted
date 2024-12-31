@@ -42,24 +42,24 @@ def home():
         'refresh_interval': Config.REFRESH_INTERVAL
     })
 
-# In src/app.py
 @app.route('/webhook', methods=['GET'])
 def trmnl_webhook():
     try:
         data = api_service.get_data()
         logger.info(f'Data retrieved: {data}')
         
-        # Generate markup response using the get_trmnl_markup function
-        markup = get_trmnl_markup(data)
+        # Generate image using DisplayGenerator instead of markup
+        image_data = display_generator.create_display(data)
         
-        return jsonify(markup), 200
+        # Return the binary image data with correct headers
+        return Response(image_data, mimetype='image/bmp')
         
     except Exception as e:
         logger.error(f'Webhook error: {str(e)}')
         logger.error(traceback.format_exc())
-        return jsonify({
-            'error': str(e)
-        }), 500
+        # Return error image if something goes wrong
+        error_image = display_generator.create_error_display(str(e))
+        return Response(error_image, mimetype='image/bmp')
 
 if __name__ == '__main__':
     print('=' * 80)
