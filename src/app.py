@@ -42,13 +42,14 @@ def home():
         'refresh_interval': Config.REFRESH_INTERVAL
     })
 
+# In src/app.py
 @app.route('/webhook', methods=['GET'])
 def trmnl_webhook():
     try:
         data = api_service.get_data()
         logger.info(f'Data retrieved: {data}')
         
-        # Generate markup response
+        # Generate markup response using the get_trmnl_markup function
         markup = get_trmnl_markup(data)
         
         return jsonify(markup), 200

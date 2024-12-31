@@ -49,52 +49,6 @@ class DisplayGenerator:
             self.date_font = self.title_font
             self.body_font = self.title_font
             self.small_font = self.title_font
-            
-    def get_trmnl_markup(data):
-        # Helper function to create layout
-        def create_layout(view_class):
-            person = data['wanted_list'][0] if data['wanted_list'] else None
-            
-            return f'''
-                <div class="view {view_class}">
-                    <div class="layout layout--col gap--large">
-                        <div class="item">
-                            <div class="content">
-                                <span class="title">FBI Most Wanted</span>
-                                <span class="value value--large">{data['total_wanted']} Total Wanted</span>
-                            </div>
-                        </div>
-
-                        {''.join([f'''
-                            <div class="item bg-white">
-                                <div class="meta">
-                                    <span class="label label--outline">{person['status']}</span>
-                                </div>
-                                <div class="content">
-                                    <span class="value value--xlarge">{person['title']}</span>
-                                    <span class="description clamp--2">{person['description']}</span>
-                                    {'<div class="layout layout--col gap--small">' + 
-                                        '<span class="label">REWARD</span>' +
-                                        f'<span class="description clamp--2">{person["reward_text"]}</span>' +
-                                    '</div>' if person.get('reward_text') else ''}
-                                </div>
-                            </div>
-                        ''' for person in data['wanted_list']])}
-                    </div>
-                    <div class="title_bar">
-                        <span class="title">FBI Most Wanted</span>
-                        <span class="instance">Last Updated: {data.get('timestamp', 'Unknown')}</span>
-                    </div>
-                </div>
-            '''
-
-        # Return object with all required layouts
-        return {
-            'markup': create_layout('view--full'),
-            'markup_half_horizontal': create_layout('view--half_horizontal'),
-            'markup_half_vertical': create_layout('view--half_vertical'),
-            'markup_quadrant': create_layout('view--quadrant')
-        }
 
     def create_display(self, data: Dict[str, Any]) -> Optional[bytes]:
         '''Create FBI Most Wanted display for TRMNL e-ink display.'''
@@ -455,3 +409,49 @@ class DisplayGenerator:
         buffer = io.BytesIO()
         image.save(buffer, format='BMP')
         return buffer.getvalue()
+    
+def get_trmnl_markup(data):
+    """Generate TRMNL-compatible markup for all view types."""
+    # Helper function to create layout
+    def create_layout(view_class):
+        person = data['wanted_list'][0] if data['wanted_list'] else None
+        
+        return f'''
+            <div class="view {view_class}">
+                <div class="layout layout--col gap--large">
+                    <div class="item">
+                        <div class="content">
+                            <span class="title">FBI Most Wanted</span>
+                            <span class="value value--large">{data['total_wanted']} Total Wanted</span>
+                        </div>
+                    </div>
+
+                    {''.join([f'''
+                        <div class="item bg-white">
+                            <div class="meta">
+                                <span class="label label--outline">{person['status']}</span>
+                            </div>
+                            <div class="content">
+                                <span class="value value--xlarge">{person['title']}</span>
+                                <span class="description clamp--2">{person['description']}</span>
+                                {'<div class="layout layout--col gap--small">' + 
+                                    '<span class="label">REWARD</span>' +
+                                    f'<span class="description clamp--2">{person["reward_text"]}</span>' +
+                                '</div>' if person.get('reward_text') else ''}
+                            </div>
+                        </div>
+                    ''' for person in data['wanted_list']])}
+                </div>
+                <div class="title_bar">
+                    <span class="title">FBI Most Wanted</span>
+                    <span class="instance">Last Updated: {data.get('timestamp', 'Unknown')}</span>
+                </div>
+            </div>
+        '''
+
+    return {
+        'markup': create_layout('view--full'),
+        'markup_half_horizontal': create_layout('view--half_horizontal'),
+        'markup_half_vertical': create_layout('view--half_vertical'),
+        'markup_quadrant': create_layout('view--quadrant')
+    }
