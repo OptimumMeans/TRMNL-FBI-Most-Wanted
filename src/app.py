@@ -7,6 +7,7 @@ import os
 import webbrowser
 from threading import Timer
 
+from .services.display import DisplayGenerator, get_trmnl_markup
 from .config import Config
 from .services.display import DisplayGenerator
 from .services.api_service import APIService
@@ -47,24 +48,17 @@ def trmnl_webhook():
         data = api_service.get_data()
         logger.info(f'Data retrieved: {data}')
         
-        image_data = display_generator.create_display(data)
+        # Generate markup response
+        markup = get_trmnl_markup(data)
         
-        return Response(
-            image_data,
-            mimetype='image/bmp',
-            headers={
-                'X-TRMNL-Refresh': str(Config.REFRESH_INTERVAL),
-                'X-TRMNL-Plugin-UUID': Config.TRMNL_PLUGIN_UUID
-            }
-        )
+        return jsonify(markup), 200
         
     except Exception as e:
         logger.error(f'Webhook error: {str(e)}')
         logger.error(traceback.format_exc())
-        return Response(
-            display_generator.create_error_display(str(e)),
-            mimetype='image/bmp'
-        )
+        return jsonify({
+            'error': str(e)
+        }), 500
 
 if __name__ == '__main__':
     print('=' * 80)
