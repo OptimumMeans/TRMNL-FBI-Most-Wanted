@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: trmnl-plugin
+    name: trmnl-fbi-most-wanted
     env: python
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn src.app:app
@@ -13,3 +13,22 @@ services:
         sync: false
       - key: TRMNL_PLUGIN_UUID
         sync: false
+      - key: CACHE_TIMEOUT
+        value: 600
+      - key: REFRESH_INTERVAL
+        value: 900
+
+  - type: cron
+    name: trmnl-fbi-refresh
+    env: python
+    schedule: "*/15 * * * *"  # Run every 15 minutes
+    buildCommand: pip install -r requirements.txt
+    startCommand: curl -X GET http://localhost:$PORT/webhook
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: PORT
+        fromService:
+          name: trmnl-fbi-most-wanted
+          type: web
+          envVarKey: PORT
