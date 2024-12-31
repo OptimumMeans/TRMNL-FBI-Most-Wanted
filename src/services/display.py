@@ -4,6 +4,7 @@ import logging
 import requests
 import certifi
 import traceback
+import re
 import base64
 from datetime import datetime
 from typing import Dict, Any, Optional
@@ -64,17 +65,17 @@ class DisplayGenerator:
 
     def _draw_header(self, draw: ImageDraw, data: Dict[str, Any]) -> None:
         '''Draw FBI Most Wanted header.'''
-        # Draw title
+        # Draw title in larger font with more consistent spacing
         draw.text(
-            (20, 20),
+            (20, 15),  # Moved up slightly
             'FBI MOST WANTED',
             font=self.title_font,
             fill=0
         )
         
-        # Draw total count
+        # Draw total count closer to title
         draw.text(
-            (20, 50),
+            (20, 45),  # Adjusted spacing
             f"Total Wanted: {data.get('total_wanted', 0)}",
             font=self.body_font,
             fill=0
@@ -84,15 +85,15 @@ class DisplayGenerator:
         '''Draw wanted person information with photo.'''
         # Set up dimensions for image placement
         right_margin = 20
-        image_width = 250  # Width for person's photo
-        image_height = 300  # Max height for photo
-        image_x = self.width - image_width - right_margin  # Position from right edge
-        image_y = 90  # Top margin for image
-        text_width = image_x - 40  # Available width for text
+        image_width = 200  # Matches example
+        image_height = 240  # Matches example
+        image_x = self.width - image_width - right_margin
+        image_y = 80  # Moved up slightly to match example
+        text_width = image_x - 40
 
-        # Draw name/title
+        # Draw name/title with tighter spacing
         title_lines = self._wrap_text(person['title'], self.heading_font, text_width)
-        current_y = 90
+        current_y = 80  # Start higher up
         for line in title_lines:
             draw.text(
                 (20, current_y),
@@ -100,71 +101,62 @@ class DisplayGenerator:
                 font=self.heading_font,
                 fill=0
             )
-            current_y += 25
+            current_y += 22  # Tighter line spacing
 
-        # Try to fetch and display image
-        if person['images']:
-            logger.info(f"Attempting to fetch image from URL: {person['images']}")
-            wanted_image = self._fetch_image(person['images'])
-            
-            if wanted_image:
-                # Process the image
-                wanted_image = wanted_image.convert('L')  # Convert to grayscale
-                
-                # Calculate aspect ratio and resize
-                aspect_ratio = wanted_image.height / wanted_image.width
-                target_height = min(image_height, int(image_width * aspect_ratio))
-                wanted_image = wanted_image.resize((image_width, target_height))
-                
-                # Convert to 1-bit black and white with dithering
-                wanted_image = wanted_image.convert('1', dither=Image.FLOYDSTEINBERG)
-                
-                # Paste image onto display at the correct position
-                image.paste(wanted_image, (image_x, image_y))
-                logger.info("Successfully processed and pasted image")
-            else:
-                # Create placeholder if image fetch failed
-                self._draw_placeholder_image(image, image_x, image_width)
-
-        # Draw status
-        if person['status'] and person['status'].lower() != 'na':
-            current_y += 10
+        # Add location/date immediately after title
+        if person['description']:
+            current_y += 15  # Small gap after title
+            desc_lines = self._wrap_text(person['description'], self.body_font, text_width)
             draw.text(
                 (20, current_y),
-                f"Status: {person['status']}",
+                desc_lines[0] if desc_lines else '',  # Just the first line for location/date
                 font=self.body_font,
                 fill=0
             )
             current_y += 25
 
-        # Draw description with proper wrapping
-        if person['description']:
-            current_y += 10
-            desc_lines = self._wrap_text(person['description'], self.small_font, text_width)
-            for line in desc_lines[:4]:  # Limit to 4 lines for better layout
-                draw.text(
-                    (20, current_y),
-                    line,
-                    font=self.small_font,
-                    fill=0
-                )
-                current_y += 20
+        # Process and display image
+        if person['images']:
+            wanted_image = self._fetch_image(person['images'])
+            if wanted_image:
+                # Convert to grayscale
+                wanted_image = wanted_image.convert('L')
+                
+                # Calculate aspect ratio while respecting maximum dimensions
+                aspect_ratio = wanted_image.height / wanted_image.width
+                target_width = image_width
+                target_height = int(image_width * aspect_ratio)
+                
+                # If the height would be too tall, constrain by height
+                if target_height > image_height:
+                    target_height = image_height
+                    target_width = int(image_height / aspect_ratio)
+                    # Recenter if width is less than maximum
+                    image_x = self.width - target_width - right_margin
+                
+                # Resize and convert to 1-bit with dithering
+                wanted_image = wanted_image.resize((target_width, target_height), Image.Resampling.LANCZOS)
+                wanted_image = wanted_image.convert('1', dither=Image.FLOYDSTEINBERG)
+                
+                # Paste image
+                image.paste(wanted_image, (image_x, image_y))
+            else:
+                self._draw_placeholder_image(image, image_x, image_width)
 
-        # Draw details if available and there's space
+        # Draw details if available
         if person['details']:
-            current_y += 10
-            import re
+            current_y += 15  # Small gap before details
             details_text = re.sub('<[^<]+?>', '', person['details'])
-            details_lines = self._wrap_text(details_text, self.small_font, text_width)
-            max_lines = min(8, (self.height - current_y - 60) // 20)  # Ensure we don't overflow
+            details_lines = self._wrap_text(details_text, self.body_font, text_width)
+            max_lines = min(6, (self.height - current_y - 60) // 20)  # Limit lines to avoid overflow
             for line in details_lines[:max_lines]:
                 draw.text(
                     (20, current_y),
                     line,
-                    font=self.small_font,
+                    font=self.body_font,
                     fill=0
                 )
-                current_y += 20
+                current_y += 22  # Slightly tighter line spacing
 
     def _draw_status_bar(self, draw: ImageDraw, data: Dict[str, Any]) -> None:
         '''Draw status bar at bottom of display.'''
