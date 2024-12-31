@@ -1,6 +1,7 @@
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 import io
 import logging
+import qrcode
 import requests
 import certifi
 import traceback
@@ -24,14 +25,21 @@ class DisplayGenerator:
         self.width = width
         self.height = height
         try:
-            self.title_font = ImageFont.truetype(font='arial.ttf', size=24)
-            self.heading_font = ImageFont.truetype(font='arial.ttf', size=20)
-            self.body_font = ImageFont.truetype(font='arial.ttf', size=16)
-            self.small_font = ImageFont.truetype(font='arial.ttf', size=12)
+            # Adjusted font sizes to match example
+            self.title_font = ImageFont.truetype(font='arial.ttf', size=32)  # Larger for FBI MOST WANTED
+            self.subtitle_font = ImageFont.truetype(font='arial.ttf', size=16)  # Smaller for Total Wanted
+            self.name_font = ImageFont.truetype(font='arial.ttf', size=24)  # Large for person's name
+            self.heading_font = ImageFont.truetype(font='arial.ttf', size=18)  # For location
+            self.date_font = ImageFont.truetype(font='arial.ttf', size=16)  # For date
+            self.body_font = ImageFont.truetype(font='arial.ttf', size=16)  # For details
+            self.small_font = ImageFont.truetype(font='arial.ttf', size=14)  # For status bar
         except Exception as e:
             logger.warning(f'Failed to load TrueType font: {e}')
             self.title_font = ImageFont.load_default()
+            self.subtitle_font = self.title_font
+            self.name_font = self.title_font
             self.heading_font = self.title_font
+            self.date_font = self.title_font
             self.body_font = self.title_font
             self.small_font = self.title_font
 
@@ -62,101 +70,138 @@ class DisplayGenerator:
             logger.error(f'Error generating FBI display: {str(e)}')
             logger.error(traceback.format_exc())
             return self.create_error_display(str(e))
+        
+    def _generate_qr_code(self, url: str, size: int = 100) -> Image.Image:
+        '''Generate QR code for FBI Most Wanted URL.'''
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=2,
+            border=2,
+        )
+        qr.add_data(url)
+        qr.make(fit=True)
+        
+        # Create QR code image
+        qr_image = qr.make_image(fill_color="black", back_color="white")
+        
+        # Resize to desired dimensions
+        qr_image = qr_image.resize((size, size), Image.Resampling.NEAREST)
+        return qr_image
 
     def _draw_header(self, draw: ImageDraw, data: Dict[str, Any]) -> None:
         '''Draw FBI Most Wanted header.'''
-        # Draw title in larger font with more consistent spacing
+        # Draw main title in large font
         draw.text(
-            (20, 15),  # Moved up slightly
+            (20, 15),
             'FBI MOST WANTED',
             font=self.title_font,
             fill=0
         )
         
-        # Draw total count closer to title
+        # Draw total count in smaller font
         draw.text(
-            (20, 45),  # Adjusted spacing
+            (20, 50),
             f"Total Wanted: {data.get('total_wanted', 0)}",
-            font=self.body_font,
+            font=self.subtitle_font,
             fill=0
         )
 
     def _draw_wanted_person(self, draw: ImageDraw, person: Dict[str, Any], image: Image) -> None:
         '''Draw wanted person information with photo.'''
-        # Set up dimensions for image placement
+        # Image dimensions
         right_margin = 20
-        image_width = 200  # Matches example
-        image_height = 240  # Matches example
+        image_width = 200
+        image_height = 240
         image_x = self.width - image_width - right_margin
-        image_y = 80  # Moved up slightly to match example
+        image_y = 80
         text_width = image_x - 40
 
-        # Draw name/title with tighter spacing
-        title_lines = self._wrap_text(person['title'], self.heading_font, text_width)
-        current_y = 80  # Start higher up
+        # Draw name/title in large bold font
+        current_y = 80
+        title_lines = self._wrap_text(person['title'], self.name_font, text_width)
         for line in title_lines:
             draw.text(
                 (20, current_y),
                 line,
-                font=self.heading_font,
+                font=self.name_font,
                 fill=0
             )
-            current_y += 22  # Tighter line spacing
+            current_y += 30  # More space between name lines
 
-        # Add location/date immediately after title
+        # Draw location/date
+        current_y += 5  # Small gap after name
         if person['description']:
-            current_y += 15  # Small gap after title
-            desc_lines = self._wrap_text(person['description'], self.body_font, text_width)
-            draw.text(
-                (20, current_y),
-                desc_lines[0] if desc_lines else '',  # Just the first line for location/date
-                font=self.body_font,
-                fill=0
-            )
-            current_y += 25
+            desc_parts = person['description'].split('\r\n')
+            if len(desc_parts) >= 2:
+                # Draw date and location on separate lines
+                draw.text(
+                    (20, current_y),
+                    desc_parts[0],  # Date
+                    font=self.date_font,
+                    fill=0
+                )
+                current_y += 20
+                draw.text(
+                    (20, current_y),
+                    desc_parts[1],  # Location
+                    font=self.date_font,
+                    fill=0
+                )
+                current_y += 25
 
-        # Process and display image
+        # Process and draw image
         if person['images']:
             wanted_image = self._fetch_image(person['images'])
             if wanted_image:
-                # Convert to grayscale
                 wanted_image = wanted_image.convert('L')
-                
-                # Calculate aspect ratio while respecting maximum dimensions
                 aspect_ratio = wanted_image.height / wanted_image.width
                 target_width = image_width
                 target_height = int(image_width * aspect_ratio)
                 
-                # If the height would be too tall, constrain by height
                 if target_height > image_height:
                     target_height = image_height
                     target_width = int(image_height / aspect_ratio)
-                    # Recenter if width is less than maximum
                     image_x = self.width - target_width - right_margin
                 
-                # Resize and convert to 1-bit with dithering
                 wanted_image = wanted_image.resize((target_width, target_height), Image.Resampling.LANCZOS)
                 wanted_image = wanted_image.convert('1', dither=Image.FLOYDSTEINBERG)
-                
-                # Paste image
                 image.paste(wanted_image, (image_x, image_y))
             else:
                 self._draw_placeholder_image(image, image_x, image_width)
 
-        # Draw details if available
+        # Draw details text
         if person['details']:
-            current_y += 15  # Small gap before details
+            current_y += 15
             details_text = re.sub('<[^<]+?>', '', person['details'])
             details_lines = self._wrap_text(details_text, self.body_font, text_width)
-            max_lines = min(6, (self.height - current_y - 60) // 20)  # Limit lines to avoid overflow
-            for line in details_lines[:max_lines]:
+            for line in details_lines[:8]:
                 draw.text(
                     (20, current_y),
                     line,
                     font=self.body_font,
                     fill=0
                 )
-                current_y += 22  # Slightly tighter line spacing
+                current_y += 22
+                
+        # Calculate QR code position
+        # Place it in bottom right, above status bar
+        qr_size = 100
+        qr_x = self.width - qr_size - 20  # 20px margin from right
+        qr_y = self.height - qr_size - 50  # 50px up from bottom to clear status bar
+
+        # Generate and paste QR code if URL is available
+        if person.get('url'):
+            qr_image = self._generate_qr_code(person['url'], qr_size)
+            image.paste(qr_image, (qr_x, qr_y))
+            
+            # Add "Scan for details" text above QR code
+            draw.text(
+                (qr_x, qr_y - 20),
+                "Scan for details",
+                font=self.small_font,
+                fill=0
+            )
 
     def _draw_status_bar(self, draw: ImageDraw, data: Dict[str, Any]) -> None:
         '''Draw status bar at bottom of display.'''

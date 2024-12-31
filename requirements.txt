@@ -10,3 +10,4 @@ flask-cors==4.0.0
 selenium==4.16.0
 webdriver-manager==4.0.1
 certifi==2023.11.17
+qrcode==7.4.2

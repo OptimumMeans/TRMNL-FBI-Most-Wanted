@@ -90,13 +90,14 @@ class APIService:
                     image_url = None
             
             wanted_person = {
-                'title': item.get('title', 'Unknown'),
-                'description': item.get('description', ''),
-                'reward_text': item.get('reward_text', 'No reward information'),
-                'images': image_url,
-                'details': item.get('details', ''),
-                'status': item.get('status', 'WANTED')
-            }
+            'title': item.get('title', 'Unknown'),
+            'description': item.get('description', ''),
+            'reward_text': item.get('reward_text', 'No reward information'),
+            'images': image_url,
+            'details': item.get('details', ''),
+            'status': item.get('status', 'WANTED'),
+            'url': item.get('url', f"https://www.fbi.gov/wanted//@/item/{item.get('uid', '')}")
+        }
             wanted_persons.append(wanted_person)
         
         # Log the total number of persons processed
