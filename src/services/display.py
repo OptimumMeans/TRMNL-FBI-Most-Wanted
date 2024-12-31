@@ -1,5 +1,6 @@
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 import io
+import os
 import logging
 import qrcode
 import requests
@@ -25,14 +26,20 @@ class DisplayGenerator:
         self.width = width
         self.height = height
         try:
-            # Adjusted font sizes to match example
-            self.title_font = ImageFont.truetype(font='arial.ttf', size=32)  # Larger for FBI MOST WANTED
-            self.subtitle_font = ImageFont.truetype(font='arial.ttf', size=16)  # Smaller for Total Wanted
-            self.name_font = ImageFont.truetype(font='arial.ttf', size=24)  # Large for person's name
-            self.heading_font = ImageFont.truetype(font='arial.ttf', size=18)  # For location
-            self.date_font = ImageFont.truetype(font='arial.ttf', size=16)  # For date
-            self.body_font = ImageFont.truetype(font='arial.ttf', size=16)  # For details
-            self.small_font = ImageFont.truetype(font='arial.ttf', size=14)  # For status bar
+            # Get the path to the DejaVu font in the assets directory
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            font_path = os.path.join(current_dir, '..', 'assets', 'DejaVuSans.ttf')
+            
+            logger.info(f'Loading font from: {font_path}')
+            
+            # Initialize fonts with DejaVu
+            self.title_font = ImageFont.truetype(font=font_path, size=32)
+            self.subtitle_font = ImageFont.truetype(font=font_path, size=16)
+            self.name_font = ImageFont.truetype(font=font_path, size=24)
+            self.heading_font = ImageFont.truetype(font=font_path, size=18)
+            self.date_font = ImageFont.truetype(font=font_path, size=16)
+            self.body_font = ImageFont.truetype(font=font_path, size=16)
+            self.small_font = ImageFont.truetype(font=font_path, size=14)
         except Exception as e:
             logger.warning(f'Failed to load TrueType font: {e}')
             self.title_font = ImageFont.load_default()
