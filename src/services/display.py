@@ -178,18 +178,45 @@ class DisplayGenerator:
                 self._draw_placeholder_image(image, image_x, image_width)
 
         # Draw details text
+        details_text = ""
         if person['details']:
-            current_y += 15
             details_text = re.sub('<[^<]+?>', '', person['details'])
+        elif person['description']:
+            details_text = person['description']
+
+        if details_text:
+            current_y += 15
             details_lines = self._wrap_text(details_text, self.body_font, text_width)
-            for line in details_lines[:8]:
+            max_lines = 6  # Limit number of lines to show
+            
+            # If we have more lines than we can display, add ellipsis
+            if len(details_lines) > max_lines:
+                for line in details_lines[:max_lines]:
+                    draw.text(
+                        (20, current_y),
+                        line,
+                        font=self.body_font,
+                        fill=0
+                    )
+                    current_y += 22
+                
+                # Add ellipsis text
                 draw.text(
                     (20, current_y),
-                    line,
+                    "Want to read more? Scan the QR code below...",
                     font=self.body_font,
                     fill=0
                 )
-                current_y += 22
+            else:
+                # Show all lines if we have space
+                for line in details_lines:
+                    draw.text(
+                        (20, current_y),
+                        line,
+                        font=self.body_font,
+                        fill=0
+                    )
+                    current_y += 22
                 
         # Calculate QR code position
         # Place it in bottom right, above status bar
