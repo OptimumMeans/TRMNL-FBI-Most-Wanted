@@ -89,15 +89,16 @@ class APIService:
                     logger.error(f"Error processing image URL: {str(e)}")
                     image_url = None
             
+            # Process reward information and other details
             wanted_person = {
-            'title': item.get('title', 'Unknown'),
-            'description': item.get('description', ''),
-            'reward_text': item.get('reward_text', 'No reward information'),
-            'images': image_url,
-            'details': item.get('details', ''),
-            'status': item.get('status', 'WANTED'),
-            'url': item.get('url', f"https://www.fbi.gov/wanted//@/item/{item.get('uid', '')}")
-        }
+                'title': item.get('title', 'Unknown'),
+                'description': item.get('description', ''),
+                'reward_text': item.get('reward_text', 'No reward information available'),
+                'images': image_url,
+                'details': item.get('details', ''),
+                'status': item.get('status', 'WANTED'),
+                'url': item.get('url', f"https://www.fbi.gov/wanted//@/item/{item.get('uid', '')}")
+            }
             wanted_persons.append(wanted_person)
         
         # Log the total number of persons processed
@@ -120,4 +121,4 @@ class APIService:
             return False
             
         cache_age = (datetime.now(UTC) - self._cache_timestamp).total_seconds()
-        return cache_age < Config.CACHE_TIMEOUT
+        return cache_age < 300  # Cache is valid for 5 minutes

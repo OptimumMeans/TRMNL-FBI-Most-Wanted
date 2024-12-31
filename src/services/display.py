@@ -72,11 +72,36 @@ class DisplayGenerator:
             buffer = io.BytesIO()
             image.save(buffer, format='BMP')
             return buffer.getvalue()
-            
         except Exception as e:
             logger.error(f'Error generating FBI display: {str(e)}')
             logger.error(traceback.format_exc())
             return self.create_error_display(str(e))
+
+    def _wrap_text(self, text: str, font: ImageFont, max_width: int) -> list[str]:
+        '''Wrap text to fit within specified width.'''
+        if not text:
+            return []
+            
+        words = text.split()
+        lines = []
+        current_line = []
+        
+        for word in words:
+            current_line.append(word)
+            line_width = font.getlength(' '.join(current_line))
+            if line_width > max_width:
+                if len(current_line) == 1:
+                    lines.append(current_line[0])
+                    current_line = []
+                else:
+                    current_line.pop()
+                    lines.append(' '.join(current_line))
+                    current_line = [word]
+        
+        if current_line:
+            lines.append(' '.join(current_line))
+        
+        return lines
         
     def _generate_qr_code(self, url: str, size: int = 100) -> Image.Image:
         '''Generate QR code for FBI Most Wanted URL.'''
@@ -218,6 +243,30 @@ class DisplayGenerator:
                     )
                     current_y += 22
                 
+        # Draw reward text with a heading
+        if person.get('reward_text'):
+            current_y += 15  # Add spacing before reward section
+            
+            # Draw "REWARD" heading
+            draw.text(
+                (20, current_y),
+                "REWARD",
+                font=self.heading_font,
+                fill=0
+            )
+            current_y += 25  # Space after heading
+            
+            # Draw reward text
+            reward_text_lines = self._wrap_text(person['reward_text'], self.body_font, text_width)
+            for line in reward_text_lines:
+                draw.text(
+                    (20, current_y),
+                    line,
+                    font=self.body_font,
+                    fill=0
+                )
+                current_y += 22  # Line spacing for reward text
+                
         # Calculate QR code position
         # Place it in bottom right, above status bar
         qr_size = 100
@@ -229,12 +278,25 @@ class DisplayGenerator:
             qr_image = self._generate_qr_code(person['url'], qr_size)
             image.paste(qr_image, (qr_x, qr_y))
             
-            # Add "Scan for details" text above QR code
-            draw.text(
-                (qr_x, qr_y - 20),
-                "Scan for details",
-                font=self.small_font,
+            # Add "Scan for details" text above QR code with black background for visibility
+            label_text = "Scan for details"
+            label_width = self.small_font.getlength(label_text)
+            label_height = 20
+            label_padding = 5
+            
+            # Draw black background rectangle for text
+            draw.rectangle(
+                [qr_x, qr_y - label_height - 5,
+                 qr_x + label_width + (label_padding * 2), qr_y - 5],
                 fill=0
+            )
+            
+            # Draw white text
+            draw.text(
+                (qr_x + label_padding, qr_y - label_height - 2),
+                label_text,
+                font=self.small_font,
+                fill=1  # White text
             )
 
     def _draw_status_bar(self, draw: ImageDraw, data: Dict[str, Any]) -> None:
@@ -347,29 +409,3 @@ class DisplayGenerator:
         buffer = io.BytesIO()
         image.save(buffer, format='BMP')
         return buffer.getvalue()
-
-    def _wrap_text(self, text: str, font: ImageFont, max_width: int) -> list[str]:
-        '''Wrap text to fit within specified width.'''
-        if not text:
-            return []
-            
-        words = text.split()
-        lines = []
-        current_line = []
-        
-        for word in words:
-            current_line.append(word)
-            line_width = font.getlength(' '.join(current_line))
-            if line_width > max_width:
-                if len(current_line) == 1:
-                    lines.append(current_line[0])
-                    current_line = []
-                else:
-                    current_line.pop()
-                    lines.append(' '.join(current_line))
-                    current_line = [word]
-        
-        if current_line:
-            lines.append(' '.join(current_line))
-        
-        return lines
