@@ -27,8 +27,8 @@ A TRMNL e-ink display plugin that shows information about FBI Most Wanted fugiti
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/fbi-most-wanted-plugin.git
-cd fbi-most-wanted-plugin
+git clone https://github.com/OptimumMeans/TRMNL-FBI-Most-Wanted
+cd TRMNL-FBI-Most-Wanted
 ```
 
 2. Create and activate a virtual environment:
