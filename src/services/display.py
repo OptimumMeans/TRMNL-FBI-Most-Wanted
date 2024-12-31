@@ -209,7 +209,7 @@ class DisplayGenerator:
         image.paste(placeholder, (x, 90))
 
     def _fetch_image(self, url: str) -> Optional[Image.Image]:
-        '''Fetch image using direct request with robust headers.'''
+        '''Fetch image using direct request with robust headers and more URL variations.'''
         try:
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36',
@@ -218,17 +218,14 @@ class DisplayGenerator:
                 'Cache-Control': 'no-cache',
                 'Pragma': 'no-cache',
                 'Referer': 'https://www.fbi.gov/',
-                'sec-ch-ua': '"Chromium";v="92", " Not A;Brand";v="99"',
-                'sec-ch-ua-mobile': '?0',
-                'sec-fetch-dest': 'image',
-                'sec-fetch-mode': 'no-cors',
-                'sec-fetch-site': 'same-origin',
             }
 
             session = requests.Session()
             
             # First visit main site to get cookies
-            session.get('https://www.fbi.gov/', headers=headers, timeout=10)
+            logger.info("Fetching main FBI site for cookies...")
+            main_response = session.get('https://www.fbi.gov/', headers=headers, timeout=10)
+            logger.info(f"Main site response status: {main_response.status_code}")
             
             # Try different variations of the image URL
             urls_to_try = [
@@ -236,23 +233,39 @@ class DisplayGenerator:
                 url.replace('@@images/image', 'image/large'),
                 url.replace('@@images/image', 'image'),
                 url.replace('@@images/image', 'image/original'),
-                f"{url}/@@download/image"
+                f"{url}/@@download/image",
+                # Additional URL patterns
+                url.replace('@@images/image', '@images/image'),
+                url.replace('@@images/image', 'at_download/image'),
+                url.replace('/@@images/image', '/image_large'),
+                url.replace('/@@images/image', '/image_view_fullscreen')
             ]
+            
+            logger.info(f"Original image URL: {url}")
             
             for try_url in urls_to_try:
                 try:
+                    logger.info(f"Attempting URL: {try_url}")
                     response = session.get(try_url, headers=headers, timeout=10, verify=False)
+                    logger.info(f"Response status code: {response.status_code}")
+                    logger.info(f"Response content type: {response.headers.get('content-type', 'unknown')}")
+                    
                     if response.status_code == 200 and response.content:
-                        return Image.open(io.BytesIO(response.content))
+                        content_type = response.headers.get('content-type', '')
+                        if 'image' in content_type.lower():
+                            logger.info(f"Successfully fetched image from {try_url}")
+                            return Image.open(io.BytesIO(response.content))
+                        else:
+                            logger.warning(f"Got 200 response but content-type is {content_type}")
                 except Exception as e:
                     logger.warning(f"Failed to fetch image from {try_url}: {str(e)}")
                     continue
             
-            logger.error(f"Failed to fetch image from all URL variants")
+            logger.error("Failed to fetch image from all URL variants")
             return None
                 
         except Exception as e:
-            logger.error(f"Error fetching image: {str(e)}")
+            logger.error(f"Error in image fetch process: {str(e)}")
             logger.error(traceback.format_exc())
             return None
 
