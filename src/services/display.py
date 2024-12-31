@@ -7,6 +7,7 @@ import traceback
 import base64
 from datetime import datetime
 from typing import Dict, Any, Optional
+import urllib.parse
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
