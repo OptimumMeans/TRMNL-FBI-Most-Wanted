@@ -209,74 +209,48 @@ class DisplayGenerator:
         image.paste(placeholder, (x, 90))
 
     def _fetch_image(self, url: str) -> Optional[Image.Image]:
-        '''Fetch image using Selenium with Chromium in Docker environment.'''
+        '''Fetch image using direct request with robust headers.'''
         try:
-            # First try direct request with proper headers
             headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36',
                 'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-                'Referer': 'https://www.fbi.gov/'
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache',
+                'Referer': 'https://www.fbi.gov/',
+                'sec-ch-ua': '"Chromium";v="92", " Not A;Brand";v="99"',
+                'sec-ch-ua-mobile': '?0',
+                'sec-fetch-dest': 'image',
+                'sec-fetch-mode': 'no-cors',
+                'sec-fetch-site': 'same-origin',
             }
 
             session = requests.Session()
-            response = session.get(url, headers=headers, timeout=10, verify=False)
             
-            if response.status_code == 200:
-                return Image.open(io.BytesIO(response.content))
+            # First visit main site to get cookies
+            session.get('https://www.fbi.gov/', headers=headers, timeout=10)
             
-            # If direct request fails, try Selenium with Chromium
-            chrome_options = Options()
-            chrome_options.add_argument('--no-sandbox')
-            chrome_options.add_argument('--headless')
-            chrome_options.add_argument('--disable-dev-shm-usage')
-            chrome_options.add_argument('--disable-gpu')
-            chrome_options.add_argument('--disable-software-rasterizer')
-            chrome_options.add_argument('--disable-extensions')
-            chrome_options.add_argument('--remote-debugging-port=9222')
-            chrome_options.binary_location = '/usr/bin/chromium'  # Chromium binary path
-
-            from selenium.webdriver.chrome.service import Service
-            from webdriver_manager.chrome import ChromeDriverManager
-            from webdriver_manager.core.utils import ChromeType
-
-            service = Service('/usr/bin/chromedriver')  # Chromium webdriver path
+            # Try different variations of the image URL
+            urls_to_try = [
+                url,
+                url.replace('@@images/image', 'image/large'),
+                url.replace('@@images/image', 'image'),
+                url.replace('@@images/image', 'image/original'),
+                f"{url}/@@download/image"
+            ]
             
-            with webdriver.Chrome(service=service, options=chrome_options) as driver:
-                logger.info(f"Fetching image with Selenium from URL: {url}")
+            for try_url in urls_to_try:
+                try:
+                    response = session.get(try_url, headers=headers, timeout=10, verify=False)
+                    if response.status_code == 200 and response.content:
+                        return Image.open(io.BytesIO(response.content))
+                except Exception as e:
+                    logger.warning(f"Failed to fetch image from {try_url}: {str(e)}")
+                    continue
+            
+            logger.error(f"Failed to fetch image from all URL variants")
+            return None
                 
-                # Navigate to the image URL
-                driver.get(url)
-                
-                # Wait for the image to load
-                img_element = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.TAG_NAME, "img"))
-                )
-                
-                # Get the image as base64
-                img_base64 = driver.execute_async_script("""
-                    var canvas = document.createElement('canvas');
-                    var context = canvas.getContext('2d');
-                    var img = document.querySelector('img');
-                    var done = arguments[0];
-                    
-                    function getBase64() {
-                        canvas.width = img.width;
-                        canvas.height = img.height;
-                        context.drawImage(img, 0, 0);
-                        done(canvas.toDataURL('image/png').split(',')[1]);
-                    }
-                    
-                    if (img.complete) {
-                        getBase64();
-                    } else {
-                        img.addEventListener('load', getBase64);
-                    }
-                """)
-                
-                # Convert base64 to PIL Image
-                img_data = base64.b64decode(img_base64)
-                return Image.open(io.BytesIO(img_data))
-                    
         except Exception as e:
             logger.error(f"Error fetching image: {str(e)}")
             logger.error(traceback.format_exc())
