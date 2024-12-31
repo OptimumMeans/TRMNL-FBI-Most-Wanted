@@ -209,50 +209,37 @@ class DisplayGenerator:
         image.paste(placeholder, (x, 90))
 
     def _fetch_image(self, url: str) -> Optional[Image.Image]:
-        '''Fetch image using Selenium to bypass Cloudflare.'''
+        '''Fetch image using Selenium with Chromium in Docker environment.'''
         try:
             # First try direct request with proper headers
             headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                 'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Cache-Control': 'no-cache',
-                'Pragma': 'no-cache',
-                'Referer': 'https://www.fbi.gov/',
-                'sec-ch-ua': '"Chromium";v="92", " Not A;Brand";v="99", "Google Chrome";v="92"',
-                'sec-ch-ua-mobile': '?0',
-                'sec-fetch-dest': 'image',
-                'sec-fetch-mode': 'no-cors',
-                'sec-fetch-site': 'same-origin',
+                'Referer': 'https://www.fbi.gov/'
             }
 
             session = requests.Session()
-            # First visit main site to get cookies
-            session.get('https://www.fbi.gov/', headers=headers, timeout=10)
-            
-            # Now try to get the image
-            response = session.get(url, headers=headers, timeout=10)
+            response = session.get(url, headers=headers, timeout=10, verify=False)
             
             if response.status_code == 200:
                 return Image.open(io.BytesIO(response.content))
             
-            # If direct request failed, try using selenium
-            from selenium import webdriver
-            from selenium.webdriver.chrome.service import Service
-            from selenium.webdriver.chrome.options import Options
-            from selenium.webdriver.common.by import By
-            from selenium.webdriver.support.ui import WebDriverWait
-            from selenium.webdriver.support import expected_conditions as EC
-            import base64
-            
+            # If direct request fails, try Selenium with Chromium
             chrome_options = Options()
-            chrome_options.add_argument('--headless')
             chrome_options.add_argument('--no-sandbox')
+            chrome_options.add_argument('--headless')
             chrome_options.add_argument('--disable-dev-shm-usage')
-            chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36')
-            
+            chrome_options.add_argument('--disable-gpu')
+            chrome_options.add_argument('--disable-software-rasterizer')
+            chrome_options.add_argument('--disable-extensions')
+            chrome_options.add_argument('--remote-debugging-port=9222')
+            chrome_options.binary_location = '/usr/bin/chromium'  # Chromium binary path
+
+            from selenium.webdriver.chrome.service import Service
             from webdriver_manager.chrome import ChromeDriverManager
-            service = Service(ChromeDriverManager().install())
+            from webdriver_manager.core.utils import ChromeType
+
+            service = Service('/usr/bin/chromedriver')  # Chromium webdriver path
             
             with webdriver.Chrome(service=service, options=chrome_options) as driver:
                 logger.info(f"Fetching image with Selenium from URL: {url}")
@@ -289,7 +276,7 @@ class DisplayGenerator:
                 # Convert base64 to PIL Image
                 img_data = base64.b64decode(img_base64)
                 return Image.open(io.BytesIO(img_data))
-                
+                    
         except Exception as e:
             logger.error(f"Error fetching image: {str(e)}")
             logger.error(traceback.format_exc())
