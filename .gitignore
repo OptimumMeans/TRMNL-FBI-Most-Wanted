@@ -1,6 +1,7 @@
 # Project-specific files
 .env
 api_test.py
+render.yaml
 
 # Python
 __pycache__/
