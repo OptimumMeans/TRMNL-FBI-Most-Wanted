@@ -27,7 +27,9 @@ jobs:
       run: mkdir -p data
         
     - name: Run FBI data updater
-      run: python scripts/update_fbi_data.py
+      run: |
+        export PYTHONPATH="${PYTHONPATH}:${GITHUB_WORKSPACE}"
+        python scripts/update_fbi_data.py
       env:
         TRMNL_API_KEY: ${{ secrets.TRMNL_API_KEY }}
         TRMNL_PLUGIN_UUID: ${{ secrets.TRMNL_PLUGIN_UUID }}
