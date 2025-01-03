@@ -1,0 +1,36 @@
+name: FBI Most Wanted TRMNL Update
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'  # Run every 15 minutes
+  workflow_dispatch:  # Manual trigger for testing
+
+jobs:
+  update-trmnl:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: 'pip'
+        
+    - name: Install Chrome dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y chromium-browser chromium-chromedriver
+        
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Update TRMNL Display
+      run: python update_trmnl.py
+      env:
+        TRMNL_API_KEY: ${{ secrets.TRMNL_API_KEY }}
+        TRMNL_PLUGIN_UUID: ${{ secrets.TRMNL_PLUGIN_UUID }}
