@@ -2,11 +2,11 @@ name: FBI Most Wanted TRMNL Update
 
 on:
   schedule:
-    - cron: '*/15 * * * *'  # Run every 15 minutes
-  workflow_dispatch:  # Manual trigger for testing
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
 
 jobs:
-  update-trmnl:
+  update-display:
     runs-on: ubuntu-latest
     
     steps:
@@ -19,18 +19,35 @@ jobs:
         python-version: '3.12'
         cache: 'pip'
         
-    - name: Install Chrome dependencies
+    - name: Install dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y chromium-browser chromium-chromedriver
-        
-    - name: Install Python dependencies
-      run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         
-    - name: Update TRMNL Display
+    - name: Generate FBI Most Wanted Content
       run: python update_trmnl.py
       env:
         TRMNL_API_KEY: ${{ secrets.TRMNL_API_KEY }}
         TRMNL_PLUGIN_UUID: ${{ secrets.TRMNL_PLUGIN_UUID }}
+        
+    - name: Commit wanted.jpg
+      run: |
+        git config --global user.name 'github-actions[bot]'
+        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+        git add wanted.jpg
+        git commit -m "Update wanted.jpg"
+        git push
+        
+    - name: Commit QR code
+      run: |
+        git add qr.jpg
+        git commit -m "Update QR code"
+        git push
+        
+    - name: Commit data file
+      run: |
+        git add FBIMostWanted.json
+        git commit -m "Update FBI data"
+        git push
