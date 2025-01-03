@@ -1,11 +1,10 @@
 {
-    "Name": "",
-    "Description": "",
-    "ImageURL": "",
-    "Status": "",
-    "RewardText": "",
-    "TotalWanted": 0,
-    "Attribution": "Data provided by FBI.gov",
-    "LastUpdate": "",
-    "QRCodeURL": "qr.jpg"
-  }
+  "Name": "KOA KAI BERNSTEIN",
+  "Description": "October of 2022\r\nAla Wai Boat Harbor\r\nHonolulu, Hawaii",
+  "Status": "na",
+  "RewardText": null,
+  "TotalWanted": 1054,
+  "Attribution": "Data provided by FBI.gov",
+  "LastUpdate": "2025-01-03T04:19:19.293323+00:00",
+  "QRCodeURL": "qr.jpg"
+}
