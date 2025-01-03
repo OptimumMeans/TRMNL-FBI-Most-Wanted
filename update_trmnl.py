@@ -8,9 +8,8 @@ from datetime import datetime, UTC
 from src.services.api_service import APIService
 from src.services.display import DisplayGenerator
 
-# Configure logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
@@ -18,7 +17,7 @@ logger = logging.getLogger(__name__)
 def update_trmnl():
     """Update TRMNL display with new FBI Most Wanted data"""
     try:
-        # Get required environment variables
+        # Get environment variables
         plugin_uuid = os.environ.get('TRMNL_PLUGIN_UUID')
         api_key = os.environ.get('TRMNL_API_KEY')
         
@@ -35,13 +34,14 @@ def update_trmnl():
         
         if not data or 'wanted_list' not in data or not data['wanted_list']:
             raise ValueError("No FBI data available")
-            
+        
+        person = data['wanted_list'][0]
+        
         # Generate the display image
         logger.info("Generating display image...")
         image_data = display_generator.create_display(data)
         
         # Prepare the TRMNL payload
-        person = data['wanted_list'][0]
         payload = {
             'merge_variables': {
                 'title': person['title'],
@@ -53,15 +53,17 @@ def update_trmnl():
             }
         }
         
-        # Prepare the files
+        # Prepare multipart form data
         files = {
-            'image': ('image.bmp', image_data, 'image/bmp')
+            'image': ('fbi_wanted.bmp', image_data, 'image/bmp')
         }
         
         # Send to TRMNL
         logger.info("Sending update to TRMNL...")
         url = f'https://usetrmnl.com/api/custom_plugins/{plugin_uuid}'
-        headers = {'Authorization': f'Bearer {api_key}'}
+        headers = {
+            'Authorization': f'Bearer {api_key}'
+        }
         
         response = requests.post(
             url,
@@ -75,6 +77,7 @@ def update_trmnl():
         
     except Exception as e:
         logger.error(f"Error updating TRMNL: {str(e)}")
+        logger.error("Full traceback:", exc_info=True)
         raise
 
 if __name__ == '__main__':
