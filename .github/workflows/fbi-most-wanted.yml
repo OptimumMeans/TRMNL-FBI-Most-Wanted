@@ -1,5 +1,8 @@
 name: FBI Most Wanted TRMNL Update
 
+permissions:
+  contents: write
+
 on:
   schedule:
     - cron: '*/15 * * * *'
