@@ -1,23 +1,14 @@
-from PIL import Image, ImageDraw, ImageFont, ImageOps
+from PIL import Image, ImageDraw, ImageFont
 import io
 import os
 import logging
 import qrcode
 import requests
-import certifi
 import traceback
 import re
-import base64
 from datetime import datetime
 from typing import Dict, Any, Optional
 import urllib.parse
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
 
 logger = logging.getLogger(__name__)
 
@@ -26,13 +17,11 @@ class DisplayGenerator:
         self.width = width
         self.height = height
         try:
-            # Get the path to the DejaVu font in the assets directory
             current_dir = os.path.dirname(os.path.abspath(__file__))
             font_path = os.path.join(current_dir, '..', 'assets', 'DejaVuSans.ttf')
             
             logger.info(f'Loading font from: {font_path}')
             
-            # Initialize fonts with DejaVu
             self.title_font = ImageFont.truetype(font=font_path, size=32)
             self.subtitle_font = ImageFont.truetype(font=font_path, size=16)
             self.name_font = ImageFont.truetype(font=font_path, size=24)
@@ -51,22 +40,18 @@ class DisplayGenerator:
             self.small_font = self.title_font
 
     def create_display(self, data: Dict[str, Any]) -> Optional[bytes]:
-        '''Create FBI Most Wanted display for TRMNL e-ink display.'''
         try:
             if not data or 'wanted_list' not in data:
                 return self.create_error_display('No FBI data available')
             
-            image = Image.new('1', (self.width, self.height), 1)  # White background
+            image = Image.new('1', (self.width, self.height), 1)# White background
             draw = ImageDraw.Draw(image)
             
-            # Draw header
             self._draw_header(draw, data)
             
-            # Draw most wanted person
             if data['wanted_list']:
                 self._draw_wanted_person(draw, data['wanted_list'][0], image)
             
-            # Draw status bar
             self._draw_status_bar(draw, data)
             
             buffer = io.BytesIO()
@@ -78,7 +63,6 @@ class DisplayGenerator:
             return self.create_error_display(str(e))
 
     def _wrap_text(self, text: str, font: ImageFont, max_width: int) -> list[str]:
-        '''Wrap text to fit within specified width.'''
         if not text:
             return []
             
@@ -104,7 +88,6 @@ class DisplayGenerator:
         return lines
         
     def _generate_qr_code(self, url: str, size: int = 100) -> Image.Image:
-        '''Generate QR code for FBI Most Wanted URL.'''
         qr = qrcode.QRCode(
             version=1,
             error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -114,16 +97,42 @@ class DisplayGenerator:
         qr.add_data(url)
         qr.make(fit=True)
         
-        # Create QR code image
         qr_image = qr.make_image(fill_color="black", back_color="white")
         
-        # Resize to desired dimensions
         qr_image = qr_image.resize((size, size), Image.Resampling.NEAREST)
         return qr_image
+    
+    def _draw_qr_code(self, draw: ImageDraw, image: Image, url: str, qr_x: int, qr_y: int) -> None:
+        qr_size = 100
+        
+        qr_image = self._generate_qr_code(url, qr_size)
+        image.paste(qr_image, (qr_x, qr_y))
+        
+        label_text = "Scan for details"
+        label_width = self.small_font.getlength(label_text)
+        
+        text_x = qr_x + (qr_size - label_width) // 2
+        text_y = qr_y + qr_size + 5  # 5px padding
+        
+        padding = 4
+        draw.rectangle(
+            [
+                text_x - padding,
+                text_y - padding,
+                text_x + label_width + padding,
+                text_y + self.small_font.size + padding
+            ],
+            fill=0  # Black background
+        )
+        
+        draw.text(
+            (text_x, text_y),
+            label_text,
+            font=self.small_font,
+            fill=1  # White text on black background
+        )
 
     def _draw_header(self, draw: ImageDraw, data: Dict[str, Any]) -> None:
-        '''Draw FBI Most Wanted header.'''
-        # Draw main title in large font
         draw.text(
             (20, 15),
             'FBI MOST WANTED',
@@ -131,7 +140,6 @@ class DisplayGenerator:
             fill=0
         )
         
-        # Draw total count in smaller font
         draw.text(
             (20, 50),
             f"Total Wanted: {data.get('total_wanted', 0)}",
@@ -140,7 +148,6 @@ class DisplayGenerator:
         )
 
     def _draw_wanted_person(self, draw: ImageDraw, person: Dict[str, Any], image: Image) -> None:
-        '''Draw wanted person information with photo.'''
         # Image dimensions
         right_margin = 20
         image_width = 200
@@ -149,7 +156,6 @@ class DisplayGenerator:
         image_y = 80
         text_width = image_x - 40
 
-        # Draw name/title in large bold font
         current_y = 80
         title_lines = self._wrap_text(person['title'], self.name_font, text_width)
         for line in title_lines:
@@ -159,14 +165,12 @@ class DisplayGenerator:
                 font=self.name_font,
                 fill=0
             )
-            current_y += 30  # More space between name lines
+            current_y += 30
 
-        # Draw location/date
-        current_y += 5  # Small gap after name
+        current_y += 5
         if person['description']:
             desc_parts = person['description'].split('\r\n')
             if len(desc_parts) >= 2:
-                # Draw date and location on separate lines
                 draw.text(
                     (20, current_y),
                     desc_parts[0],  # Date
@@ -182,7 +186,6 @@ class DisplayGenerator:
                 )
                 current_y += 25
 
-        # Process and draw image
         if person['images']:
             wanted_image = self._fetch_image(person['images'])
             if wanted_image:
@@ -202,7 +205,6 @@ class DisplayGenerator:
             else:
                 self._draw_placeholder_image(image, image_x, image_width)
 
-        # Draw details text
         details_text = ""
         if person['details']:
             details_text = re.sub('<[^<]+?>', '', person['details'])
@@ -214,7 +216,7 @@ class DisplayGenerator:
             details_lines = self._wrap_text(details_text, self.body_font, text_width)
             max_lines = 6  # Limit number of lines to show
             
-            # If we have more lines than we can display, add ellipsis
+            # If we have more lines than displayable, add ...
             if len(details_lines) > max_lines:
                 for line in details_lines[:max_lines]:
                     draw.text(
@@ -233,7 +235,7 @@ class DisplayGenerator:
                     fill=0
                 )
             else:
-                # Show all lines if we have space
+                # Show all lines if space provides
                 for line in details_lines:
                     draw.text(
                         (20, current_y),
@@ -243,20 +245,17 @@ class DisplayGenerator:
                     )
                     current_y += 22
                 
-        # Draw reward text with a heading
         if person.get('reward_text'):
-            current_y += 15  # Add spacing before reward section
+            current_y += 15
             
-            # Draw "REWARD" heading
             draw.text(
                 (20, current_y),
                 "REWARD",
                 font=self.heading_font,
                 fill=0
             )
-            current_y += 25  # Space after heading
+            current_y += 25
             
-            # Draw reward text
             reward_text_lines = self._wrap_text(person['reward_text'], self.body_font, text_width)
             for line in reward_text_lines:
                 draw.text(
@@ -265,52 +264,24 @@ class DisplayGenerator:
                     font=self.body_font,
                     fill=0
                 )
-                current_y += 22  # Line spacing for reward text
+                current_y += 22
                 
-        # Calculate QR code position
-        # Place it in bottom right, above status bar
         qr_size = 100
-        qr_x = self.width - qr_size - 20  # 20px margin from right
-        qr_y = self.height - qr_size - 50  # 50px up from bottom to clear status bar
+        qr_x = self.width - qr_size - 20
+        qr_y = self.height - qr_size - 70
 
-        # Generate and paste QR code if URL is available
         if person.get('url'):
-            qr_image = self._generate_qr_code(person['url'], qr_size)
-            image.paste(qr_image, (qr_x, qr_y))
-            
-            # Add "Scan for details" text above QR code with black background for visibility
-            label_text = "Scan for details"
-            label_width = self.small_font.getlength(label_text)
-            label_height = 20
-            label_padding = 5
-            
-            # Draw black background rectangle for text
-            draw.rectangle(
-                [qr_x, qr_y - label_height - 5,
-                 qr_x + label_width + (label_padding * 2), qr_y - 5],
-                fill=0
-            )
-            
-            # Draw white text
-            draw.text(
-                (qr_x + label_padding, qr_y - label_height - 2),
-                label_text,
-                font=self.small_font,
-                fill=1  # White text
-            )
+            self._draw_qr_code(draw, image, person['url'], qr_x, qr_y)
 
     def _draw_status_bar(self, draw: ImageDraw, data: Dict[str, Any]) -> None:
-        '''Draw status bar at bottom of display.'''
         status_height = 30
         bar_y = self.height - status_height - 10
         
-        # Draw black background for status bar
         draw.rectangle(
             [0, bar_y, self.width, bar_y + status_height],
             fill=0
         )
         
-        # Format timestamp
         timestamp = data.get('timestamp', 'Unknown')
         if isinstance(timestamp, str):
             try:
@@ -319,7 +290,6 @@ class DisplayGenerator:
             except ValueError:
                 pass
         
-        # Draw timestamp in white text
         status_text = f'Last Update: {timestamp}'
         draw.text(
             (10, bar_y + 5),
@@ -329,7 +299,6 @@ class DisplayGenerator:
         )
 
     def _draw_placeholder_image(self, image: Image, x: int, width: int) -> None:
-        '''Draw a placeholder when image cannot be loaded.'''
         placeholder = Image.new('L', (width, 200), 255)
         draw = ImageDraw.Draw(placeholder)
         draw.text(
@@ -342,9 +311,8 @@ class DisplayGenerator:
         image.paste(placeholder, (x, 90))
 
     def _fetch_image(self, url: str) -> Optional[Image.Image]:
-        '''Fetch image using image proxy service to bypass restrictions.'''
         try:
-            # Encode the FBI URL for the proxy service
+            # Encode FBI URL for proxy service
             encoded_url = urllib.parse.quote_plus(url)
             proxy_url = f'https://wsrv.nl/?url={encoded_url}'
             
@@ -382,11 +350,9 @@ class DisplayGenerator:
             return None
 
     def create_error_display(self, error_message: str) -> bytes:
-        '''Create error display.'''
         image = Image.new('1', (self.width, self.height), 1)
         draw = ImageDraw.Draw(image)
         
-        # Draw error header
         draw.text(
             (20, 20),
             'FBI Most Wanted - Error',
@@ -394,7 +360,6 @@ class DisplayGenerator:
             fill=0
         )
         
-        # Draw error message
         error_lines = self._wrap_text(error_message, self.body_font, self.width - 40)
         current_y = 60
         for line in error_lines:
@@ -409,49 +374,3 @@ class DisplayGenerator:
         buffer = io.BytesIO()
         image.save(buffer, format='BMP')
         return buffer.getvalue()
-    
-def get_trmnl_markup(data):
-    """Generate TRMNL-compatible markup for all view types."""
-    # Helper function to create layout
-    def create_layout(view_class):
-        person = data['wanted_list'][0] if data['wanted_list'] else None
-        
-        return f'''
-            <div class="view {view_class}">
-                <div class="layout layout--col gap--large">
-                    <div class="item">
-                        <div class="content">
-                            <span class="title">FBI Most Wanted</span>
-                            <span class="value value--large">{data['total_wanted']} Total Wanted</span>
-                        </div>
-                    </div>
-
-                    {''.join([f'''
-                        <div class="item bg-white">
-                            <div class="meta">
-                                <span class="label label--outline">{person['status']}</span>
-                            </div>
-                            <div class="content">
-                                <span class="value value--xlarge">{person['title']}</span>
-                                <span class="description clamp--2">{person['description']}</span>
-                                {'<div class="layout layout--col gap--small">' + 
-                                    '<span class="label">REWARD</span>' +
-                                    f'<span class="description clamp--2">{person["reward_text"]}</span>' +
-                                '</div>' if person.get('reward_text') else ''}
-                            </div>
-                        </div>
-                    ''' for person in data['wanted_list']])}
-                </div>
-                <div class="title_bar">
-                    <span class="title">FBI Most Wanted</span>
-                    <span class="instance">Last Updated: {data.get('timestamp', 'Unknown')}</span>
-                </div>
-            </div>
-        '''
-
-    return {
-        'markup': create_layout('view--full'),
-        'markup_half_horizontal': create_layout('view--half_horizontal'),
-        'markup_half_vertical': create_layout('view--half_vertical'),
-        'markup_quadrant': create_layout('view--quadrant')
-    }
