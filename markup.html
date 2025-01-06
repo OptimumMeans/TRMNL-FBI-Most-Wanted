@@ -1,44 +1,107 @@
 <div class="layout">
-  <div class="columns">
-    <div class="column">
-      <span class="value value--large">FBI Most Wanted</span>
-      <span class="value value--small">Total: {{ total_wanted }}</span>
-
-      <div
-        class="list"
-        data-list-limit="true"
-        data-list-max-height="340"
-        data-list-hidden-count="true"
-      >
-        {% for person in wanted_list %}
-        <div class="item">
-          <div class="meta">
-            <span class="index">{{ forloop.index }}</span>
-          </div>
-          <div class="content">
-            <span class="title title--small">{{ person.title }}</span>
-            <span class="description clamp--2">{{ person.description }}</span>
-            <div class="flex gap--small">
-              <span class="label label--small">{{ person.subject }}</span>
-              <span class="label label--small"
-                >{{ person.race }} {{ person.sex }}</span
-              >
-              {% if person.warning_message != "" %}
-              <span class="label label--small label--warning"
-                >⚠️ {{ person.warning_message }}</span
-              >
-              {% endif %}
-            </div>
-            {% if person.reward_text != "" %}
-            <span class="label label--small label--inverted"
-              >💰 {{ person.reward_text }}</span
-            >
-            {% endif %}
-          </div>
-        </div>
-        {% endfor %}
+  <div class="grid gap--large">
+    <!-- Header Section -->
+    <div class="item">
+      <div class="content">
+        <span class="value value--xlarge">{{ person.title }}</span>
+        {% if person.warning_message != "" %}
+        <span class="label label--large label--warning"
+          >⚠️ {{ person.warning_message }}</span
+        >
+        {% endif %}
       </div>
     </div>
+
+    <!-- Main Description -->
+    <div class="item">
+      <div class="content">
+        <span class="description">{{ person.description }}</span>
+      </div>
+    </div>
+
+    <!-- Physical Description -->
+    <div class="grid grid--cols-2 gap--medium">
+      <div class="item">
+        <div class="content">
+          <span class="label">Physical Description</span>
+          <div class="flex flex--col gap--small">
+            <span class="value value--small">Race: {{ person.race }}</span>
+            <span class="value value--small">Sex: {{ person.sex }}</span>
+            <span class="value value--small">Hair: {{ person.hair }}</span>
+            <span class="value value--small">Eyes: {{ person.eyes }}</span>
+            <span class="value value--small">Height: {{ person.height }}</span>
+            <span class="value value--small">Weight: {{ person.weight }}</span>
+            <span class="value value--small">Build: {{ person.build }}</span>
+            <span class="value value--small"
+              >Complexion: {{ person.complexion }}</span
+            >
+          </div>
+        </div>
+      </div>
+
+      <div class="item">
+        <div class="content">
+          <span class="label">Personal Information</span>
+          <div class="flex flex--col gap--small">
+            <span class="value value--small"
+              >Age Range: {{ person.age_range }}</span
+            >
+            <span class="value value--small"
+              >Nationality: {{ person.nationality }}</span
+            >
+            <span class="value value--small"
+              >Languages: {{ person.languages }}</span
+            >
+            <span class="value value--small"
+              >Place of Birth: {{ person.place_of_birth }}</span
+            >
+            <span class="value value--small"
+              >DOB Used: {{ person.dates_of_birth }}</span
+            >
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Distinguishing Features -->
+    {% if person.scars_marks != "None reported" %}
+    <div class="item">
+      <div class="content">
+        <span class="label">Distinguishing Features</span>
+        <span class="value value--small">{{ person.scars_marks }}</span>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Caution Section -->
+    {% if person.caution != "" %}
+    <div class="item">
+      <div class="content">
+        <span class="label label--warning">⚠️ CAUTION</span>
+        <span class="description">{{ person.caution }}</span>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Reward Section -->
+    {% if person.reward_text != "" %}
+    <div class="item">
+      <div class="content">
+        <span class="label label--inverted">💰 REWARD</span>
+        <span class="description">{{ person.reward_text }}</span>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Remarks Section -->
+    {% if person.remarks != "" %}
+    <div class="item">
+      <div class="content">
+        <span class="label">REMARKS</span>
+        <span class="description">{{ person.remarks }}</span>
+      </div>
+    </div>
+    {% endif %}
   </div>
 </div>
 
@@ -47,6 +110,6 @@
     class="image"
     src="https://usetrmnl.com/images/plugins/trmnl--render.svg"
   />
-  <span class="title">FBI Wanted List</span>
+  <span class="title">FBI Most Wanted</span>
   <span class="instance">Last Updated: {{ updated_at }}</span>
 </div>
