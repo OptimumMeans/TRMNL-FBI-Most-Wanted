@@ -1,0 +1,52 @@
+<div class="layout">
+  <div class="columns">
+    <div class="column">
+      <span class="value value--large">FBI Most Wanted</span>
+      <span class="value value--small">Total: {{ total_wanted }}</span>
+
+      <div
+        class="list"
+        data-list-limit="true"
+        data-list-max-height="340"
+        data-list-hidden-count="true"
+      >
+        {% for person in wanted_list %}
+        <div class="item">
+          <div class="meta">
+            <span class="index">{{ forloop.index }}</span>
+          </div>
+          <div class="content">
+            <span class="title title--small">{{ person.title }}</span>
+            <span class="description clamp--2">{{ person.description }}</span>
+            <div class="flex gap--small">
+              <span class="label label--small">{{ person.subject }}</span>
+              <span class="label label--small"
+                >{{ person.race }} {{ person.sex }}</span
+              >
+              {% if person.warning_message != "" %}
+              <span class="label label--small label--warning"
+                >⚠️ {{ person.warning_message }}</span
+              >
+              {% endif %}
+            </div>
+            {% if person.reward_text != "" %}
+            <span class="label label--small label--inverted"
+              >💰 {{ person.reward_text }}</span
+            >
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="title_bar">
+  <img
+    class="image"
+    src="https://usetrmnl.com/images/plugins/trmnl--render.svg"
+  />
+  <span class="title">FBI Wanted List</span>
+  <span class="instance">Last Updated: {{ updated_at }}</span>
+</div>
