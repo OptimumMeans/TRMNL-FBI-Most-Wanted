@@ -53,6 +53,19 @@ def get_fbi_data(page=1):
     except Exception as e:
         print(f"Error fetching FBI data: {e}")
         return None
+    
+def download_and_save_image(image_url, save_path):
+    try:
+        response = requests.get(image_url, stream=True)
+        response.raise_for_status()
+        
+        with open(save_path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+        return True
+    except Exception as e:
+        print(f"Error downloading image: {e}")
+        return False
 
 def format_fbi_data(items):
     if not items:
@@ -80,6 +93,16 @@ def format_fbi_data(items):
     
     qr_code_url = f"https://raw.githubusercontent.com/{os.getenv('GITHUB_REPOSITORY')}/main/qr_code.png" if qr_generated else ''
     
+    images = item.get('images', [])
+    profile_image_url = ''
+    if images:
+        original_image = next((img for img in images if img.get('large')), None)
+        if original_image:
+            image_url = original_image.get('large')
+            image_path = 'profile_image.jpg'
+            if download_and_save_image(image_url, image_path):
+                profile_image_url = f"https://raw.githubusercontent.com/{os.getenv('GITHUB_REPOSITORY')}/main/profile_image.jpg"
+    
     formatted_data = {
         'title': item.get('title', 'Unknown'),
         'description': item.get('description', ''),
@@ -105,7 +128,10 @@ def format_fbi_data(items):
         'details': item.get('details', ''),
         'caution': item.get('caution', ''),
         'fbi_url': fbi_url,
-        'qr_code_url': qr_code_url
+        'qr_code_url': qr_code_url,
+        'fbi_url': fbi_url,
+        'qr_code_url': qr_code_url,
+        'profile_image_url': profile_image_url
     }
     
     if DEBUG:
