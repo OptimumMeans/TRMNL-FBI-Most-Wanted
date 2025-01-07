@@ -129,8 +129,6 @@ def format_fbi_data(items):
         'caution': item.get('caution', ''),
         'fbi_url': fbi_url,
         'qr_code_url': qr_code_url,
-        'fbi_url': fbi_url,
-        'qr_code_url': qr_code_url,
         'profile_image_url': profile_image_url
     }
     
