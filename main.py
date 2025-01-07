@@ -56,16 +56,51 @@ def get_fbi_data(page=1):
     
 def download_and_save_image(image_url, save_path):
     try:
-        response = requests.get(image_url, stream=True)
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Referer': 'https://www.fbi.gov/'
+        }
+        
+        response = requests.get(image_url, headers=headers, stream=True)
         response.raise_for_status()
         
         with open(save_path, 'wb') as f:
             for chunk in response.iter_content(chunk_size=8192):
                 f.write(chunk)
         return True
+    except requests.exceptions.HTTPError as e:
+        print(f"HTTP Error downloading image: {e}")
+        if e.response.status_code == 403:
+            print("Access forbidden. Using fallback image URL if available.")
+            try:
+                fallback_url = image_url.replace('/large', '/thumb')
+                response = requests.get(fallback_url, headers=headers, stream=True)
+                response.raise_for_status()
+                
+                with open(save_path, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        f.write(chunk)
+                return True
+            except Exception as fallback_error:
+                print(f"Fallback image download failed: {fallback_error}")
+                return False
+        return False
     except Exception as e:
         print(f"Error downloading image: {e}")
         return False
+    
+def get_best_available_image(images):
+    if not images:
+        return None
+        
+    for size in ['large', 'original', 'thumb']:
+        image = next((img for img in images if img.get(size)), None)
+        if image:
+            return image.get(size)
+    
+    return None
 
 def format_fbi_data(items):
     if not items:
@@ -96,12 +131,13 @@ def format_fbi_data(items):
     images = item.get('images', [])
     profile_image_url = ''
     if images:
-        original_image = next((img for img in images if img.get('large')), None)
-        if original_image:
-            image_url = original_image.get('large')
+        image_url = get_best_available_image(images)
+        if image_url:
             image_path = 'profile_image.jpg'
             if download_and_save_image(image_url, image_path):
                 profile_image_url = f"https://raw.githubusercontent.com/{os.getenv('GITHUB_REPOSITORY')}/main/profile_image.jpg"
+            else:
+                print("Failed to download image, profile will not be shown")
     
     formatted_data = {
         'title': item.get('title', 'Unknown'),
