@@ -7,6 +7,7 @@ import time
 import base64
 import qrcode
 from pathlib import Path
+import urllib.parse
 
 load_dotenv()
 
@@ -56,37 +57,32 @@ def get_fbi_data(page=1):
     
 def download_and_save_image(image_url, save_path):
     try:
+        encoded_url = urllib.parse.quote_plus(image_url)
+        proxy_url = f'https://wsrv.nl/?url={encoded_url}'
+        
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Referer': 'https://www.fbi.gov/'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
         }
         
-        response = requests.get(image_url, headers=headers, stream=True)
-        response.raise_for_status()
+        response = requests.get(proxy_url, headers=headers, timeout=15, verify=False)
         
-        with open(save_path, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
-        return True
-    except requests.exceptions.HTTPError as e:
-        print(f"HTTP Error downloading image: {e}")
-        if e.response.status_code == 403:
-            print("Access forbidden. Using fallback image URL if available.")
-            try:
-                fallback_url = image_url.replace('/large', '/thumb')
-                response = requests.get(fallback_url, headers=headers, stream=True)
-                response.raise_for_status()
-                
-                with open(save_path, 'wb') as f:
-                    for chunk in response.iter_content(chunk_size=8192):
-                        f.write(chunk)
-                return True
-            except Exception as fallback_error:
-                print(f"Fallback image download failed: {fallback_error}")
-                return False
+        if response.status_code == 200:
+            with open(save_path, 'wb') as f:
+                f.write(response.content)
+            return True
+            
+        alt_proxy_url = f'https://images.weserv.nl/?url={encoded_url}'
+        response = requests.get(alt_proxy_url, headers=headers, timeout=15, verify=False)
+        
+        if response.status_code == 200:
+            with open(save_path, 'wb') as f:
+                f.write(response.content)
+            return True
+            
+        print(f"Failed to download image. Status code: {response.status_code}")
         return False
+            
     except Exception as e:
         print(f"Error downloading image: {e}")
         return False
