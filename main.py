@@ -5,12 +5,34 @@ from datetime import datetime
 from dotenv import load_dotenv
 import time
 import base64
+import qrcode
+from pathlib import Path
 
 load_dotenv()
 
 TRMNL_PLUGIN_UUID = os.getenv('TRMNL_PLUGIN_UUID')
 TRMNL_WEBHOOK_URL = f"https://usetrmnl.com/api/custom_plugins/{TRMNL_PLUGIN_UUID}"
 DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
+
+def generate_qr_code(url, save_path):
+    try:
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        
+        qr.add_data(url)
+        qr.make(fit=True)
+
+        qr_image = qr.make_image(fill_color="black", back_color="white")
+        
+        qr_image.save(save_path)
+        return True
+    except Exception as e:
+        print(f"Error generating QR code: {e}")
+        return False
 
 def get_fbi_data(page=1):
     headers = {
@@ -53,6 +75,11 @@ def format_fbi_data(items):
     fbi_id = item.get('uid', '')
     fbi_url = f"https://www.fbi.gov/wanted/viewing#{fbi_id}" if fbi_id else ''
     
+    qr_code_path = 'qr_code.png'
+    qr_generated = generate_qr_code(fbi_url, qr_code_path)
+    
+    qr_code_url = f"https://raw.githubusercontent.com/{os.getenv('GITHUB_REPOSITORY')}/main/qr_code.png" if qr_generated else ''
+    
     formatted_data = {
         'title': item.get('title', 'Unknown'),
         'description': item.get('description', ''),
@@ -77,7 +104,8 @@ def format_fbi_data(items):
         'remarks': item.get('remarks', ''),
         'details': item.get('details', ''),
         'caution': item.get('caution', ''),
-        'fbi_url': fbi_url
+        'fbi_url': fbi_url,
+        'qr_code_url': qr_code_url
     }
     
     if DEBUG:
