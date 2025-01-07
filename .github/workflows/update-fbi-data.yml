@@ -30,10 +30,10 @@ jobs:
         GITHUB_REPOSITORY: ${{ github.repository }}
       run: python main.py
       
-    - name: Commit and push QR code
+    - name: Commit and push updated files
       run: |
         git config --global user.name 'GitHub Action'
         git config --global user.email 'action@github.com'
-        git add qr_code.png
-        git commit -m "Update QR code" || echo "No changes to commit"
+        git add qr_code.png profile_image.jpg
+        git commit -m "Update QR code and profile image" || echo "No changes to commit"
         git push
