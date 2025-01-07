@@ -34,6 +34,14 @@ jobs:
       run: |
         git config --global user.name 'GitHub Action'
         git config --global user.email 'action@github.com'
-        git add qr_code.png profile_image.jpg
-        git commit -m "Update QR code and profile image" || echo "No changes to commit"
-        git push
+        
+        # Add files only if they exist
+        if [ -f qr_code.png ]; then
+          git add qr_code.png
+        fi
+        if [ -f profile_image.jpg ]; then
+          git add profile_image.jpg
+        fi
+        
+        # Try to commit if there are changes
+        git status --porcelain | grep -q . && git commit -m "Update QR code and profile image" && git push || echo "No changes to commit"
